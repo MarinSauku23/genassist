@@ -1,37 +1,31 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { NodeProps, useNodes, useEdges } from "reactflow";
-import { AgentNodeData } from "../../types/nodes";
+import React, { useEffect, useMemo, useState } from "react";
+import { NodeProps, useEdges, useNodes } from "reactflow";
+import { SubAgentNodeData } from "../../types/nodes";
 import { getNodeColor } from "../../utils/nodeColors";
 import BaseNodeContainer from "../BaseNodeContainer";
-import { AgentDialog } from "../../nodeDialogs/AgentDialog";
+import { SubAgentDialog } from "../../nodeDialogs/SubAgentDialog";
 import { getLLMProvider } from "@/services/llmProviders";
 import nodeRegistry from "../../registry/nodeRegistry";
 import { NodeContentRow } from "../nodeContent";
 
-interface ToolNodeData {
-  name?: string;
-  description?: string;
-}
-export const AGENT_NODE_TYPE = "agentNode";
+export const SUB_AGENT_NODE_TYPE = "subAgentNode";
 
-const AgentNode: React.FC<NodeProps<AgentNodeData>> = ({
+const MODE_LABELS: Record<string, string> = {
+  single_turn: "Single Turn",
+  task: "Task",
+  chat: "Chat",
+};
+
+const SubAgentNode: React.FC<NodeProps<SubAgentNodeData>> = ({
   id,
   data,
   selected,
 }) => {
-  const nodeDefinition = nodeRegistry.getNodeType(AGENT_NODE_TYPE);
+  const nodeDefinition = nodeRegistry.getNodeType(SUB_AGENT_NODE_TYPE);
   const nodes = useNodes();
   const edges = useEdges();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [providerName, setProviderName] = useState("");
-  const [availableTools, setAvailableTools] = useState<
-    Array<{
-      id: string;
-      name: string;
-      description: string;
-      category: string;
-    }>
-  >([]);
   const color = getNodeColor(nodeDefinition.category);
 
   useEffect(() => {
@@ -46,36 +40,20 @@ const AgentNode: React.FC<NodeProps<AgentNodeData>> = ({
     }
   }, [data.providerId]);
 
-  // Get available tools from connected nodes
-  useEffect(() => {
-    const connectedToolNodes = nodes.filter(
-      (node) =>
-        nodeRegistry.getAllToolTypes().includes(node.type) &&
-        edges.some(
-          (edge) =>
-            edge.target === id &&
-            edge.source === node.id &&
-            edge.targetHandle === "input_tools"
-        )
-    );
-
-    const tools = connectedToolNodes.map((node) => {
-      const nodeData = node.data as ToolNodeData;
-      return {
-        id: node.id,
-        name: nodeData?.name || "Unnamed Tool",
-        description: nodeData?.description || "No description available",
-        category: node.type, // Use node.type instead of node.category
-      };
-    });
-
-    setAvailableTools(tools);
-  }, [nodes, edges, id]);
-
-  // Get available tools from connected nodes
-  const getAvailableTools = useCallback(() => {
-    return availableTools;
-  }, [availableTools]);
+  const toolCount = useMemo(
+    () =>
+      nodes.filter(
+        (node) =>
+          nodeRegistry.getAllToolTypes().includes(node.type) &&
+          edges.some(
+            (edge) =>
+              edge.target === id &&
+              edge.source === node.id &&
+              edge.targetHandle === "input_tools"
+          )
+      ).length,
+    [nodes, edges, id]
+  );
 
   const subAgentCount = useMemo(
     () =>
@@ -85,8 +63,7 @@ const AgentNode: React.FC<NodeProps<AgentNodeData>> = ({
     [edges, id]
   );
 
-  // Handle updates from the dialog
-  const onUpdate = (updatedData: AgentNodeData) => {
+  const onUpdate = (updatedData: SubAgentNodeData) => {
     if (data.updateNodeData) {
       data.updateNodeData(id, {
         ...data,
@@ -102,13 +79,17 @@ const AgentNode: React.FC<NodeProps<AgentNodeData>> = ({
       placeholder: "None selected",
     },
     {
-      label: "Agent Type",
-      value: `${data.type} (${data.memory ? "with" : "without"} memory)`,
+      label: "Mode",
+      value: MODE_LABELS[data.mode] || data.mode,
+    },
+    {
+      label: "Description",
+      value: data.description,
+      placeholder: "None set",
     },
     {
       label: "Tools",
-      value:
-        availableTools.length === 0 ? "" : `${availableTools.length} connected`,
+      value: toolCount === 0 ? "" : `${toolCount} connected`,
       placeholder: "None connected",
     },
     {
@@ -128,22 +109,22 @@ const AgentNode: React.FC<NodeProps<AgentNodeData>> = ({
         title={data.name || nodeDefinition.label}
         subtitle={nodeDefinition.shortDescription}
         color={color}
-        nodeType="agentNode"
+        nodeType="subAgentNode"
         nodeContent={nodeContent}
         onSettings={() => setIsEditDialogOpen(true)}
+        disableTest
       />
 
-      {/* Edit Dialog */}
-      <AgentDialog
+      <SubAgentDialog
         isOpen={isEditDialogOpen}
         onClose={() => setIsEditDialogOpen(false)}
         data={data}
         onUpdate={onUpdate}
         nodeId={id}
-        nodeType={AGENT_NODE_TYPE}
+        nodeType={SUB_AGENT_NODE_TYPE}
       />
     </>
   );
 };
 
-export default React.memo(AgentNode);
+export default React.memo(SubAgentNode);
