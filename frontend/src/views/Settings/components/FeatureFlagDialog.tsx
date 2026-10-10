@@ -6,10 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/select";
 import { FormField } from "@/components/ui/form-field";
 import { CRUDDialog } from "@/components/ui/crud-dialog";
 import { extractErrorMessage } from "@/helpers/apiError";
 import { createFeatureFlag, updateFeatureFlag } from "@/services/featureFlags";
+import { FeatureFlags } from "@/config/featureFlags";
 
 interface FeatureFlagDialogProps {
   isOpen: boolean;
@@ -25,6 +33,13 @@ type FeatureFlagFormValues = {
   description: string;
   is_active: boolean;
 };
+
+const FEATURE_FLAG_KEY_PATTERN =
+  /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
+const isFlagValue = (value: string) => value === "true" || value === "false";
+const KNOWN_FEATURE_FLAG_KEYS = new Set<string>(
+  Object.values(FeatureFlags).flatMap((group) => Object.values(group))
+);
 
 export function FeatureFlagDialog({
   isOpen,
@@ -44,7 +59,9 @@ export function FeatureFlagDialog({
         featureFlagToEdit
           ? {
               key: featureFlagToEdit.key || "",
-              val: featureFlagToEdit.val || "",
+              val: isFlagValue(featureFlagToEdit.val)
+                ? featureFlagToEdit.val
+                : "",
               description: featureFlagToEdit.description || "",
               is_active: featureFlagToEdit.is_active === 1,
             }
@@ -62,8 +79,16 @@ export function FeatureFlagDialog({
       }
       errorDisplay="both"
       validate={(values) => {
-        if (!values.key.trim()) return { key: "Feature flag key is required" };
-        if (!values.val.trim()) return { val: "Feature flag value is required" };
+        const key = values.key.trim();
+        if (!key) return { key: "Feature flag key is required" };
+        if (!FEATURE_FLAG_KEY_PATTERN.test(key)) {
+          return { key: "Use letters and digits separated by dots" };
+        }
+        if (!KNOWN_FEATURE_FLAG_KEYS.has(key)) {
+          return { key: "No feature uses this key" };
+        }
+        if (!isFlagValue(values.val))
+          return { val: "Feature flag value is required" };
         return null;
       }}
       onSubmit={async (values, { mode: m }) => {
@@ -98,12 +123,18 @@ export function FeatureFlagDialog({
           </FormField>
 
           <FormField id="val" label="Value" error={errors.val}>
-            <Input
-              id="val"
+            <Select
               value={values.val}
-              onChange={(e) => setField("val", e.target.value)}
-              placeholder="true, false, or a variant value"
-            />
+              onValueChange={(v) => setField("val", v)}
+            >
+              <SelectTrigger id="val">
+                <SelectValue placeholder="Select a value" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">true</SelectItem>
+                <SelectItem value="false">false</SelectItem>
+              </SelectContent>
+            </Select>
           </FormField>
 
           <FormField id="description" label="Description">

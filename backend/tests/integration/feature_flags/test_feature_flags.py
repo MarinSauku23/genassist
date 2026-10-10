@@ -4,7 +4,7 @@ from uuid import uuid4
 @pytest.fixture(scope="module")
 def new_feature_flag_data():
     return {
-        "key": "TEST_FEATURE_FLAG",
+        "key": "test.featureFlag",
         "val": "true",
         "description": "Test feature flag for integration",
         "is_active": 1,
@@ -41,7 +41,7 @@ async def test_get_feature_flag_by_id(authorized_client, new_feature_flag_data):
 async def test_update_feature_flag(authorized_client, new_feature_flag_data):
     flag_id = new_feature_flag_data["id"]
     update_payload = {
-        "val": "off",
+        "val": "false",
         "description": "Updated feature flag",
         "is_active": 0
     }

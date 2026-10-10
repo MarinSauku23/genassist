@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseFeatureFlags,
+  getFeatureItem,
   isFeatureEnabled,
   getFeatureValue,
 } from "@/helpers/featureFlag";
@@ -84,6 +85,32 @@ describe("parseFeatureFlags", () => {
       visible: true,
       variant: "red",
     });
+  });
+});
+
+describe("getFeatureItem", () => {
+  it("ignores longer keys that share the prefix", () => {
+    expect(
+      getFeatureItem(
+        [
+          flag({ key: "llmSettings.showBedrockFineTunes", val: "true" }),
+          flag({ key: "llmSettings.showBedrockFineTune.x", val: "true" }),
+        ],
+        "llmSettings.showBedrockFineTune"
+      )
+    ).toBeUndefined();
+  });
+
+  it("keeps the exact flag when a longer key is listed first", () => {
+    expect(
+      getFeatureItem(
+        [
+          flag({ key: "llmSettings.showBedrockFineTunes", val: "true" }),
+          flag({ key: "llmSettings.showBedrockFineTune", val: "false" }),
+        ],
+        "llmSettings.showBedrockFineTune"
+      )?.visible
+    ).toBe(false);
   });
 });
 

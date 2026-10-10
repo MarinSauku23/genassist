@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, create_autospec
 from uuid import uuid4, UUID
+from pydantic import ValidationError
 
 from app.services.feature_flag import FeatureFlagService
 from app.repositories.feature_flag import FeatureFlagRepository
@@ -20,8 +21,8 @@ def svc(mock_repo):
 @pytest.fixture
 def sample_data():
     return {
-        "key": "flag_key",
-        "val": "on",
+        "key": "flagKey",
+        "val": "true",
         "description": "A test flag",
         "is_active": 1
     }
@@ -42,6 +43,41 @@ async def test_create_success(svc, mock_repo, sample_data):
     assert result.val == sample_data["val"]
     assert result.description == sample_data["description"]
     assert result.is_active == sample_data["is_active"]
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"val": "True"},
+        {"val": "on"},
+        {"val": ""},
+        {"key": "my flag"},
+        {"key": "ui_menu"},
+        {"key": "ui."},
+        {"key": ".ui"},
+        {"key": "ui..menu"},
+        {"key": "🚀"},
+        {"is_active": 2},
+        {"is_active": -1},
+    ],
+)
+def test_create_rejects_values_the_ui_would_silently_ignore(sample_data, overrides):
+    with pytest.raises(ValidationError):
+        FeatureFlagCreate(**{**sample_data, **overrides})
+
+@pytest.mark.parametrize(
+    "key, stored",
+    [
+        ("ui.menu", "ui.menu"),
+        ("analytics.showCostPerConversation", "analytics.showCostPerConversation"),
+        ("  ui.menu  ", "ui.menu"),
+    ],
+)
+def test_create_accepts_dotted_keys_and_strips_whitespace(sample_data, key, stored):
+    assert FeatureFlagCreate(**{**sample_data, "key": key}).key == stored
+
+def test_update_rejects_a_value_the_ui_would_silently_ignore():
+    with pytest.raises(ValidationError):
+        FeatureFlagUpdate(val="True")
 
 @pytest.mark.asyncio
 async def test_get_by_id_success(svc, mock_repo, sample_data):
@@ -81,17 +117,17 @@ async def test_get_all(svc, mock_repo, sample_data):
 async def test_update_success(svc, mock_repo, sample_data):
     flag_id = uuid4()
     existing_model = FeatureFlagModel(id=flag_id, **sample_data)
-    updated_model = FeatureFlagModel(id=flag_id, key="flag_key", val="off", description="Updated", is_active=0)
+    updated_model = FeatureFlagModel(id=flag_id, key="flagKey", val="false", description="Updated", is_active=0)
 
     mock_repo.get_by_id.return_value = existing_model
     mock_repo.update.return_value = updated_model
 
-    dto = FeatureFlagUpdate(val="off", description="Updated", is_active=0)
+    dto = FeatureFlagUpdate(val="false", description="Updated", is_active=0)
     result = await svc.update(flag_id, dto)
 
     mock_repo.get_by_id.assert_called_once_with(flag_id)
     mock_repo.update.assert_called_once_with(flag_id, dto)
-    assert result.val == "off"
+    assert result.val == "false"
     assert result.description == "Updated"
     assert result.is_active == 0
 
@@ -100,7 +136,7 @@ async def test_update_not_found(svc, mock_repo):
     flag_id = uuid4()
     mock_repo.get_by_id.return_value = None
 
-    dto = FeatureFlagUpdate(val="off")
+    dto = FeatureFlagUpdate(val="false")
     with pytest.raises(AppException) as exc:
         await svc.update(flag_id, dto)
 

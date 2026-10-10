@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getFeatureFlags } from '@/services/featureFlags';
 import { FeatureFlag, ParsedFeatureFlag } from '@/interfaces/featureFlag.interface';
-import { parseFeatureFlags, isFeatureEnabled as checkFeatureEnabled, getFeatureValue as getFeatureValueHelper } from '@/helpers/featureFlag';
+import { parseFeatureFlags, isFeatureEnabled as checkFeatureEnabled, getFeatureValue as getFeatureValueHelper, getFeatureItem as getFeatureItemHelper } from '@/helpers/featureFlag';
 import { isAuthenticated } from '@/services/auth';
 
 interface FeatureFlagContextType {
@@ -66,7 +66,7 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
   };
 
   const getFeatureItem = (key: string): ParsedFeatureFlag | undefined => {
-    return getFeatureItems(key)[0];
+    return getFeatureItemHelper(flags, key);
   };
 
   const refreshFlags = async (): Promise<void> => {

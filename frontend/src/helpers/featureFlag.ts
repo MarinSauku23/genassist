@@ -64,6 +64,10 @@ export const parseFeatureFlags = (featureFlags: FeatureFlag[], prefix: string = 
   return Object.values(flagsMap);
 };
 
+export const getFeatureItem = (featureFlags: FeatureFlag[], key: string): ParsedFeatureFlag | undefined => {
+  return parseFeatureFlags(featureFlags.filter(flag => flag.key === key), key)[0];
+};
+
 /**
  * Check if a feature flag is enabled based on hierarchy
  * @param featureFlags The raw feature flags 
