@@ -598,7 +598,7 @@ export function AppSidebar() {
   const [tenantId, setTenantId] = useState<string>("");
   const [query, setQuery] = useState<string>("");
   const [commandOpen, setCommandOpen] = useState<boolean>(false);
-  const { getFeatureItem } = useFeatureFlag();
+  const { isVisible } = useFeatureFlag();
 
   const location = useLocation();
   const currentPath = location.pathname;
@@ -725,8 +725,7 @@ export function AppSidebar() {
           return acc;
         if (item.feature_flag) {
           // Feature-flagged navigation items should only render when the exact flag exists and is visible.
-          const featureItem = getFeatureItem(item.feature_flag);
-          if (featureItem?.visible !== true) return acc;
+          if (!isVisible(item.feature_flag)) return acc;
         }
         if (item.children) {
           const filteredChildren = filterItems(item.children);
@@ -738,7 +737,7 @@ export function AppSidebar() {
         return acc;
       }, []);
     },
-    [getFeatureItem]
+    [isVisible]
   );
 
   // Permission/feature-flag filtered nav (no text search) — the command

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getFeatureFlags } from '@/services/featureFlags';
-import { FeatureFlag, ParsedFeatureFlag } from '@/interfaces/featureFlag.interface';
-import { parseFeatureFlags, isFeatureEnabled as checkFeatureEnabled, getFeatureValue as getFeatureValueHelper, getFeatureItem as getFeatureItemHelper } from '@/helpers/featureFlag';
+import { FeatureFlag } from '@/interfaces/featureFlag.interface';
+import { isFeatureVisible } from '@/helpers/featureFlag';
 import { isAuthenticated } from '@/services/auth';
 
 interface FeatureFlagContextType {
@@ -10,10 +10,7 @@ interface FeatureFlagContextType {
   /** Latches true once the first fetch settles; never returns to false. */
   hydrated: boolean;
   error: string | null;
-  isEnabled: (key: string) => boolean;
-  getValue: (key: string) => string | null;
-  getFeatureItems: (prefix: string) => ParsedFeatureFlag[];
-  getFeatureItem: (key: string) => ParsedFeatureFlag | undefined;
+  isVisible: (key: string) => boolean;
   refreshFlags: () => Promise<void>;
 }
 
@@ -53,20 +50,8 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
     setHydrated(true);
   }, []);
 
-  const isEnabled = (key: string): boolean => {
-    return checkFeatureEnabled(flags, key);
-  };
-
-  const getValue = (key: string): string | null => {
-    return getFeatureValueHelper(flags, key);
-  };
-
-  const getFeatureItems = (prefix: string): ParsedFeatureFlag[] => {
-    return parseFeatureFlags(flags, prefix);
-  };
-
-  const getFeatureItem = (key: string): ParsedFeatureFlag | undefined => {
-    return getFeatureItemHelper(flags, key);
+  const isVisible = (key: string): boolean => {
+    return isFeatureVisible(flags, key);
   };
 
   const refreshFlags = async (): Promise<void> => {
@@ -78,10 +63,7 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
     loading,
     hydrated,
     error,
-    isEnabled,
-    getValue,
-    getFeatureItems,
-    getFeatureItem,
+    isVisible,
     refreshFlags
   };
 

@@ -57,3 +57,7 @@ export const FeatureFlags = {
       TOOLS: 'components.tools',
     }
   };
+
+export const FEATURE_FLAG_KEYS = Object.values(FeatureFlags).flatMap((group) =>
+  Object.values(group),
+);

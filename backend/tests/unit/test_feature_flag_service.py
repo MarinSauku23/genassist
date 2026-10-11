@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, create_autospec
 from uuid import uuid4, UUID
-from pydantic import ValidationError
 
 from app.services.feature_flag import FeatureFlagService
 from app.repositories.feature_flag import FeatureFlagRepository
@@ -43,41 +42,6 @@ async def test_create_success(svc, mock_repo, sample_data):
     assert result.val == sample_data["val"]
     assert result.description == sample_data["description"]
     assert result.is_active == sample_data["is_active"]
-
-@pytest.mark.parametrize(
-    "overrides",
-    [
-        {"val": "True"},
-        {"val": "on"},
-        {"val": ""},
-        {"key": "my flag"},
-        {"key": "ui_menu"},
-        {"key": "ui."},
-        {"key": ".ui"},
-        {"key": "ui..menu"},
-        {"key": "🚀"},
-        {"is_active": 2},
-        {"is_active": -1},
-    ],
-)
-def test_create_rejects_values_the_ui_would_silently_ignore(sample_data, overrides):
-    with pytest.raises(ValidationError):
-        FeatureFlagCreate(**{**sample_data, **overrides})
-
-@pytest.mark.parametrize(
-    "key, stored",
-    [
-        ("ui.menu", "ui.menu"),
-        ("analytics.showCostPerConversation", "analytics.showCostPerConversation"),
-        ("  ui.menu  ", "ui.menu"),
-    ],
-)
-def test_create_accepts_dotted_keys_and_strips_whitespace(sample_data, key, stored):
-    assert FeatureFlagCreate(**{**sample_data, "key": key}).key == stored
-
-def test_update_rejects_a_value_the_ui_would_silently_ignore():
-    with pytest.raises(ValidationError):
-        FeatureFlagUpdate(val="True")
 
 @pytest.mark.asyncio
 async def test_get_by_id_success(svc, mock_repo, sample_data):

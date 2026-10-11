@@ -2,7 +2,6 @@ import {
   FeatureFlag,
   FeatureFlagFormData,
 } from "@/interfaces/featureFlag.interface";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/switch";
@@ -17,7 +16,7 @@ import { FormField } from "@/components/ui/form-field";
 import { CRUDDialog } from "@/components/ui/crud-dialog";
 import { extractErrorMessage } from "@/helpers/apiError";
 import { createFeatureFlag, updateFeatureFlag } from "@/services/featureFlags";
-import { FeatureFlags } from "@/config/featureFlags";
+import { FEATURE_FLAG_KEYS } from "@/config/featureFlags";
 
 interface FeatureFlagDialogProps {
   isOpen: boolean;
@@ -34,12 +33,7 @@ type FeatureFlagFormValues = {
   is_active: boolean;
 };
 
-const FEATURE_FLAG_KEY_PATTERN =
-  /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
-const isFlagValue = (value: string) => value === "true" || value === "false";
-const KNOWN_FEATURE_FLAG_KEYS = new Set<string>(
-  Object.values(FeatureFlags).flatMap((group) => Object.values(group))
-);
+const FLAG_VALUES = ["true", "false"];
 
 export function FeatureFlagDialog({
   isOpen,
@@ -58,8 +52,10 @@ export function FeatureFlagDialog({
       editValues={
         featureFlagToEdit
           ? {
-              key: featureFlagToEdit.key || "",
-              val: isFlagValue(featureFlagToEdit.val)
+              key: FEATURE_FLAG_KEYS.includes(featureFlagToEdit.key)
+                ? featureFlagToEdit.key
+                : "",
+              val: FLAG_VALUES.includes(featureFlagToEdit.val)
                 ? featureFlagToEdit.val
                 : "",
               description: featureFlagToEdit.description || "",
@@ -79,16 +75,8 @@ export function FeatureFlagDialog({
       }
       errorDisplay="both"
       validate={(values) => {
-        const key = values.key.trim();
-        if (!key) return { key: "Feature flag key is required" };
-        if (!FEATURE_FLAG_KEY_PATTERN.test(key)) {
-          return { key: "Use letters and digits separated by dots" };
-        }
-        if (!KNOWN_FEATURE_FLAG_KEYS.has(key)) {
-          return { key: "No feature uses this key" };
-        }
-        if (!isFlagValue(values.val))
-          return { val: "Feature flag value is required" };
+        if (!values.key.trim()) return { key: "Feature flag key is required" };
+        if (!values.val.trim()) return { val: "Feature flag value is required" };
         return null;
       }}
       onSubmit={async (values, { mode: m }) => {
@@ -113,13 +101,21 @@ export function FeatureFlagDialog({
       {({ values, setField, errors }) => (
         <>
           <FormField id="key" label="Key" error={errors.key}>
-            <Input
-              id="key"
+            <Select
               value={values.key}
-              onChange={(e) => setField("key", e.target.value)}
-              placeholder="feature.name"
-              autoFocus
-            />
+              onValueChange={(v) => setField("key", v)}
+            >
+              <SelectTrigger id="key" autoFocus>
+                <SelectValue placeholder="Select a key" />
+              </SelectTrigger>
+              <SelectContent>
+                {FEATURE_FLAG_KEYS.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {key}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
 
           <FormField id="val" label="Value" error={errors.val}>
@@ -131,8 +127,11 @@ export function FeatureFlagDialog({
                 <SelectValue placeholder="Select a value" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="true">true</SelectItem>
-                <SelectItem value="false">false</SelectItem>
+                {FLAG_VALUES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </FormField>
